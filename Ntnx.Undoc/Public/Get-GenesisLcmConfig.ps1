@@ -25,15 +25,6 @@ value: "{".oid":"LifeCycleManager",".method":"lcm_framework_rpc",".kwargs":{"met
         [string]
         $ComputerName,
 
-        # Port (Default is 9440)
-        [Parameter(Mandatory=$false)]
-        [int16]
-        $Port = 9440,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $ShowMetadata,
-
         # Body Parameter1
         #[Parameter()]
         #$BodyParam1,
@@ -41,7 +32,16 @@ value: "{".oid":"LifeCycleManager",".method":"lcm_framework_rpc",".kwargs":{"met
         # Prism UI Credential to invoke call
         [Parameter(Mandatory=$true)]
         [PSCredential]
-        $Credential
+        $Credential,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $ShowMetadata,
+
+        # Port (Default is 9440)
+        [Parameter(Mandatory=$false)]
+        [int16]
+        $Port = 9440
     )
 
     process {
