@@ -45,9 +45,9 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
         $IsPulsePromptNeeded = $false,
 
         [Parameter()]
-        [ValidateSet("ALL")]
+        [ValidateSet("ALL","AUTO","PARTIAL")]
         [String]
-        $IdentificationInfoScrubbingLevel = "ALL",
+        $IdentificationInfoScrubbingLevel,
 
         [Parameter()]
         $NosVersion,
