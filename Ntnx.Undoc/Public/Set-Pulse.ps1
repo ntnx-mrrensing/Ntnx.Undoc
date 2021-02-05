@@ -16,10 +16,6 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
         [string]
         $ComputerName,
 
-        [Parameter(Mandatory=$false)]
-        [int16]
-        $port = 9440,
-
         [Parameter()]
         [bool]
         $RemindLater = $false,
@@ -32,9 +28,9 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
         [String]
         $DefaultNutanixEmail = "nos-asups@nutanix.com",
 
-        [Parameter()]
+        [Parameter(Mandatory=$true)]
         [bool]
-        $Enable = $true,
+        $Enable,
 
         [Parameter()]
         [bool]
@@ -59,7 +55,15 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
 
         [Parameter(Mandatory=$true)]
         [PSCredential]
-        $Credential
+        $Credential,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $PcFanOut,
+
+        [Parameter(Mandatory=$false)]
+        [int16]
+        $port = 9440
     )
 
     process {
@@ -81,6 +85,8 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
         $headers.Add("content-type", "application/json")
 
         $url = "https://$($ComputerName):$($port)/PrismGateway/services/rest/v1/pulse"
+        if($PcFanOut){
+            $url = $url + "?proxyClusterUuid=all_clusters"
         
         $response = Invoke-RestMethod -Method PUT -Uri $url -Headers $headers -Body $body
 
