@@ -87,6 +87,7 @@ NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
         $url = "https://$($ComputerName):$($port)/PrismGateway/services/rest/v1/pulse"
         if($PcFanOut){
             $url = $url + "?proxyClusterUuid=all_clusters"
+        }
         
         $response = Invoke-RestMethod -Method PUT -Uri $url -Headers $headers -Body $body
 
