@@ -1,60 +1,134 @@
-function Invoke-NccCheck {  
-    <#
-    .SYNOPSIS
-    Dynamically Generated API Function
-    .NOTES
-    NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
-    
-    The code samples provided here are intended as standalone examples.  They can be downloaded, copied and/or modified in any way you see fit.
-    
-    Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
-    #>
-    
-    [cmdletbinding()]
+function Invoke-Ncccheck {   
+<#
+.SYNOPSIS
+Dynamically Generated API Function
+.NOTES
+NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
 
-    PARAM (
+The code samples provided here are intended as standalone examples.  They can be downloaded, copied and/or modified in any way you see fit.
+
+Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
+#>
+
+    [CmdletBinding()]
+    [OutputType()]
+
+    param(
+        # VIP or FQDN of target AOS cluster
         [Parameter(Mandatory=$true)]
         [string]
         $ComputerName,
 
-        [Parameter(Mandatory=$false)]
-        [int16]
-        $port = 9440,
-
-        [Parameter()]
-        [bool]
-        $sendEmail = $false,
-        
-        [Parameter(Mandatory=$true)]
-        [int[]]
-        $CheckID,
-
+        # Prism UI Credential to invoke call
         [Parameter(Mandatory=$true)]
         [PSCredential]
-        $Credential
+        $Credential,
+
+        # NCC Check ID - Leave Blank for All
+        [Parameter(Mandatory=$false)]
+        [int]
+        $CheckId,
+
+        # Body Parameter1
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $SendEmail,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $SkipCertificateCheck,
+
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $ShowMetadata,
+
+        # Port (Default is 9440)
+        [Parameter(Mandatory=$false)]
+        [int16]
+        $Port = 9440
     )
 
-    PROCESS {
+    begin {
+        Set-StrictMode -Version Latest
+    }
 
-        $body = @{
-            sendEmail = $sendEmail
-            nccChecks = $CheckID.foreach({$_.ToString()})
+    process {
+        $body = [Hashtable]::new()
+
+        if($null -ne $CheckId){
+            $body.add("nccChecks",$CheckId)
+        }
+
+        $body.add("sendEmail",$false)
+        if($SendEmail){
+            $body.sendEmail -eq $true
+        }
+
+        $iwrArgs = @{
+            Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/ncc/checks"
+            Method = "Get"
+            ContentType = "application/json"
+            ErrorVariable = "iwrError"
+        }
+
+        if($body.count -ge 1){
+            $iwrArgs.add("Body",($body | ConvertTo-Json))
+        }
+
+        if($PSVersionTable.PSVersion.Major -lt 6){
+            $basicAuth = Initialize-BasicAuthHeader -credential $Credential
+            $iwrArgs.Add("headers",$basicAuth)
+        }
+        else{
+            $iwrArgs.add("Authentication","Basic")
+            $iwrArgs.add("Credential",$Credential)
+            $iwrArgs.add("SslProtocol","Tls12")
+
+            if($SkipCertificateCheck){
+                $iwrArgs.add("SkipCertificateCheck",$true)
+            }
         }
         
-        $body = $body | ConvertTo-Json
-        Write-Verbose -Message "JSON Payload: $body"
+        try{
+            $response = Invoke-WebRequest @iwrArgs
 
-        $headers = Initialize-BasicAuthHeader -credential $Credential
-        $headers.Add("content-type", "application/json")
+            if($response.StatusCode -in 200..204){
+                $content = $response.Content | ConvertFrom-Json
 
-        $url = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/ncc/checks"
-        
-        $response = Invoke-RestMethod -Method POST -Uri $url -Headers $headers -Body $body
-        $response | add-member -Name ComputerName -Value $ComputerName -MemberType NoteProperty
-
-        Write-Output $response
-
+                if($ShowMetadata){
+                    if($null -ne $content.metadata){
+                        $content.metadata    
+                    }
+                    else{
+                        Write-Output "No Metadata Found"
+                    }
+                }
+                else{
+                    if($null -eq $Content.Entities){
+                        $content
+                    }
+                    else{
+                        $content.Entities
+                    }
+                }
+            }
+            elseif($response.StatusCode -eq 401){
+                Write-Verbose -Message "Credential used not authorized, exiting..."
+                Write-Error -Message "$($response.StatusCode): $($response.StatusDescription)"
+                exit
+            }
+            else{
+                Write-Error -Message "$($response.StatusCode): $($response.StatusDescription)"
+            }   
+        } 
+        catch{
+            if($null -eq $iwrError){
+                Write-Error -Message "API Call Failed"
+            }
+            else{
+                Write-Error -Message $iwrError.Message
+            }
+        }
     }
-        
-        
+                
 }
