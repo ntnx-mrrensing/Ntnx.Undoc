@@ -1,4 +1,4 @@
-function Get-License {   
+function Get-LicenseV1 {   
 <#
 .SYNOPSIS
 Dynamically Generated API Function
@@ -55,12 +55,13 @@ Please be aware that all code samples provided here are unofficial in nature, ar
             Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/license"
             Method = "GET"
             ContentType = "application/json"
-            ErrorVariable = "iwrError"
+            #ErrorVariable = "iwrError"
         }
 
+        <#
         if($body.count -ge 1){
             $iwrArgs.add("Body",($body | ConvertTo-Json))
-        }
+        }#>
 
         if($PSVersionTable.PSVersion.Major -lt 6){
             $basicAuth = Initialize-BasicAuthHeader -credential $Credential
@@ -79,17 +80,12 @@ Please be aware that all code samples provided here are unofficial in nature, ar
         try{
             $response = Invoke-WebRequest @iwrArgs
 
-            if($response.StatusCode -in 200..204){
+            if($response.StatusCode -eq 200){
                 $response.Content | ConvertFrom-Json -Depth 50
-            }
+            }   
         } 
         catch{
-            if($null -eq $iwrError){
-                Write-Error -Message "API Call Failed"
-            }
-            else{
-                Write-Error -Message $iwrError.Message
-            }
+            Write-Error -Message "API Call Failed"
         }
     }
                 
