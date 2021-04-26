@@ -1,4 +1,4 @@
-function Invoke-Ncccheck {   
+function Get-License {   
 <#
 .SYNOPSIS
 Dynamically Generated API Function
@@ -52,8 +52,8 @@ Please be aware that all code samples provided here are unofficial in nature, ar
         #$body.add("BodyParam1",$BodyParam1)
 
         $iwrArgs = @{
-            Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/ncc/checks"
-            Method = "POST"
+            Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/license"
+            Method = "GET"
             ContentType = "application/json"
             ErrorVariable = "iwrError"
         }
