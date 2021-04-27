@@ -10,16 +10,20 @@ The code samples provided here are intended as standalone examples.  They can be
 Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
 #>
 
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='Online')]
     [OutputType()]
 
     param(
         # VIP or FQDN of target AOS cluster
+        [Parameter(ParameterSetName = 'Online')]
+        [Parameter(ParameterSetName = 'OutFile')]
         [Parameter(Mandatory=$true)]
         [string]
         $ComputerName,
 
         # Prism UI Credential to invoke call
+        [Parameter(ParameterSetName = 'Online')]
+        [Parameter(ParameterSetName = 'OutFile')]
         [Parameter(Mandatory=$true)]
         [PSCredential]
         $Credential,
@@ -28,15 +32,25 @@ Please be aware that all code samples provided here are unofficial in nature, ar
         #[Parameter()]
         #$BodyParam1,
 
+        [Parameter(ParameterSetName = 'Online')]
+        [Parameter(ParameterSetName = 'OutFile')]
         [Parameter(Mandatory=$false)]
         [switch]
         $SkipCertificateCheck,
 
+        [Parameter(ParameterSetName = 'OutFile')]
         [Parameter(Mandatory=$false)]
         [switch]
-        $ShowMetadata,
+        $OutFile,
+
+        [Parameter(ParameterSetName = 'OutFile')]
+        [Parameter(Mandatory=$false)]
+        [string]
+        $OutFilePath,
 
         # Port (Default is 9440)
+        [Parameter(ParameterSetName = 'Online')]
+        [Parameter(ParameterSetName = 'OutFile')]
         [Parameter(Mandatory=$false)]
         [int16]
         $Port = 9440
@@ -80,28 +94,19 @@ Please be aware that all code samples provided here are unofficial in nature, ar
             $response = Invoke-WebRequest @iwrArgs
 
             if($response.StatusCode -in 200..204){
-                $content = $response.Content | ConvertFrom-Json
+                #$content=@()
+                [char[]]$content += $response.Content
+                $json = $content -join '' | convertfrom-json -depth 50
 
-                if($ShowMetadata){
-                    if($null -ne $content.metadata){
-                        $content.metadata    
-                    }
-                    else{
-                        Write-Output "No Metadata Found"
-                    }
+                if($OutFile){
+                    $OutFileName = (($response.headers.'content-disposition' -split ';')[1] -split '=')[1] -replace '"'
+                    $json | convertto-json -Depth 50 | Out-File -FilePath $OutFilePath\$OutFileName -Encoding utf8
                 }
                 else{
-                    if($null -eq $Content.Entities){
-                        $content
-                    }
-                    else{
-                        $content.Entities
-                    }
+                    $json
                 }
             }
-            else{
-                Write-Error -Message "$($response.StatusCode): $($response.StatusDescription)"
-            }   
+
         } 
         catch{
             if($null -eq $iwrError){
