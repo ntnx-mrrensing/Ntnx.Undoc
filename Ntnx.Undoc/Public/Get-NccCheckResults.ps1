@@ -1,53 +1,93 @@
+function Get-NccCheckResults {   
+<#
+.SYNOPSIS
+Dynamically Generated API Function
+.NOTES
+NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
 
-function Get-NccCheckResults {
-    
-    <#
-    .SYNOPSIS
-    Dynamically Generated API Function
-    .NOTES
-    NOT FOR PRODUCTION USE - FOR DEMONSTRATION/EDUCATION PURPOSES ONLY
-    
-    The code samples provided here are intended as standalone examples.  They can be downloaded, copied and/or modified in any way you see fit.
-    
-    Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
-    #>
-    
+The code samples provided here are intended as standalone examples.  They can be downloaded, copied and/or modified in any way you see fit.
 
-    [cmdletbinding()]
+Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
+#>
 
-    PARAM (
-    
+    [CmdletBinding()]
+    [OutputType()]
+
+    param(
+        # VIP or FQDN of target AOS cluster
         [Parameter(Mandatory=$true)]
-        [Alias("Cluster")]
         [string]
         $ComputerName,
 
-        [Parameter(Mandatory=$false)]
-        [int16]
-        $Port = 9440,
+        # Prism UI Credential to invoke call
+        [Parameter(Mandatory=$true)]
+        [PSCredential]
+        $Credential,
 
+        # Body Parameter1
         [Parameter(Mandatory=$true)]
         [string]
         $TaskUuid,
 
-        [Parameter(Mandatory=$true)]
-        [PSCredential]
-        $Credential
+        [Parameter(Mandatory=$false)]
+        [switch]
+        $SkipCertificateCheck,
 
+        # Port (Default is 9440)
+        [Parameter(Mandatory=$false)]
+        [int16]
+        $Port = 9440
     )
 
-    PROCESS {
-
-        $headers = Initialize-BasicAuthHeader -credential $Credential
-        $headers.Add("content-type", "application/json")
-
-        $url = "https://$($ComputerName):$($port)/PrismGateway/services/rest/v1/ncc/$($taskUuid)"
-        
-        $response = Invoke-RestMethod -Method Get -Uri $url -Headers $headers
-
-        Write-Output $response
-
+    begin {
+        Set-StrictMode -Version Latest
     }
+
+    process {
+        $body = [Hashtable]::new()
+        #$body.add("kind","kind")
+        #$body.add("BodyParam1",$BodyParam1)
+
+        $iwrArgs = @{
+            Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/ncc/$($taskUuid)"
+            Method = "GET"
+            ContentType = "application/json"
+            ErrorVariable = "iwrError"
+        }
+
+        if($body.count -ge 1){
+            $iwrArgs.add("Body",($body | ConvertTo-Json))
+        }
+
+        if ($PSVersionTable.PSVersion.Major -lt 6) {
+            $basicAuth = Initialize-BasicAuthHeader -credential $Credential
+            $iwrArgs.Add("headers",$basicAuth)
+        }
+        else{
+            $iwrArgs.add("Authentication","Basic")
+            $iwrArgs.add("Credential",$Credential)
+            $iwrArgs.add("SslProtocol","Tls12")
+
+            if ($SkipCertificateCheck) {
+                $iwrArgs.add("SkipCertificateCheck",$true)
+            }
+        }
         
-        
+        try{
+            $response = Invoke-WebRequest @iwrArgs
+
+            if ($response.StatusCode -in 200..204) {
+                $content = $response.Content | ConvertFrom-Json
+                $content
+            }
+        } 
+        catch{
+            if ($null -eq $iwrError -or !$iwrError) {
+                Write-Error -Message "API Call Failed"
+            }
+            else {
+                Write-Error -Message $iwrError.Message
+            }
+        }
+    }              
 }

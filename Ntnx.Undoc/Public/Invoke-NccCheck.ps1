@@ -1,4 +1,4 @@
-function Invoke-Ncccheck {   
+function Invoke-NccCheck {   
 <#
 .SYNOPSIS
 Dynamically Generated API Function
@@ -10,7 +10,7 @@ The code samples provided here are intended as standalone examples.  They can be
 Please be aware that all code samples provided here are unofficial in nature, are provided as examples only, are unsupported and will need to be heavily modified before they can be used in a production environment.
 #>
 
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='All')]
     [OutputType()]
 
     param(
@@ -24,23 +24,19 @@ Please be aware that all code samples provided here are unofficial in nature, ar
         [PSCredential]
         $Credential,
 
-        # NCC Check ID - Leave Blank for All
-        [Parameter(Mandatory=$false)]
-        [int]
-        $CheckId,
+        [Parameter(Mandatory=$true,
+                   ParameterSetName="Select")]
+        [int[]]
+        $CheckID,
 
-        # Body Parameter1
-        [Parameter(Mandatory=$false)]
+        [Parameter(ParameterSetName="All")]
+        [Parameter(ParameterSetName="Select")]
         [switch]
         $SendEmail,
-
+        
         [Parameter(Mandatory=$false)]
         [switch]
         $SkipCertificateCheck,
-
-        [Parameter(Mandatory=$false)]
-        [switch]
-        $ShowMetadata,
 
         # Port (Default is 9440)
         [Parameter(Mandatory=$false)]
@@ -54,19 +50,20 @@ Please be aware that all code samples provided here are unofficial in nature, ar
 
     process {
         $body = [Hashtable]::new()
+        $body.add("sendEmail",$false)
 
-        if($null -ne $CheckId){
-            $body.add("nccChecks",$CheckId)
+        if ($SendEmail) {
+            $body.sendEmail = $true
         }
 
-        $body.add("sendEmail",$false)
-        if($SendEmail){
-            $body.sendEmail -eq $true
+        if ($PSCmdlet.ParameterSetName -eq "Select") {
+            Write-Verbose -Message "$($PSCmdlet.ParameterSetName)"
+            $body.add("nccChecks",$CheckID.foreach({$_.ToString()}))
         }
 
         $iwrArgs = @{
             Uri = "https://$($ComputerName):$($Port)/PrismGateway/services/rest/v1/ncc/checks"
-            Method = "Get"
+            Method = "POST"
             ContentType = "application/json"
             ErrorVariable = "iwrError"
         }
@@ -94,32 +91,8 @@ Please be aware that all code samples provided here are unofficial in nature, ar
 
             if($response.StatusCode -in 200..204){
                 $content = $response.Content | ConvertFrom-Json
-
-                if($ShowMetadata){
-                    if($null -ne $content.metadata){
-                        $content.metadata    
-                    }
-                    else{
-                        Write-Output "No Metadata Found"
-                    }
-                }
-                else{
-                    if($null -eq $Content.Entities){
-                        $content
-                    }
-                    else{
-                        $content.Entities
-                    }
-                }
+                $content
             }
-            elseif($response.StatusCode -eq 401){
-                Write-Verbose -Message "Credential used not authorized, exiting..."
-                Write-Error -Message "$($response.StatusCode): $($response.StatusDescription)"
-                exit
-            }
-            else{
-                Write-Error -Message "$($response.StatusCode): $($response.StatusDescription)"
-            }   
         } 
         catch{
             if($null -eq $iwrError){
